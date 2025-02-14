@@ -1761,6 +1761,16 @@ pub struct FriendSourceFlags {
 }
 serial_decode!(FriendSourceFlags);
 
+impl Default for FriendSourceFlags {
+	fn default() -> Self {
+		Self {
+			all: false,
+			mutual_friends: false,
+			mutual_servers: false
+		}
+	}
+}
+
 /// User settings usually used to influence client behavior
 #[derive(Debug, Clone)]
 pub struct UserSettings {
@@ -1812,9 +1822,7 @@ impl UserSettings {
 				status: try!(remove(&mut value, "status").and_then(into_string)),
 				theme: try!(remove(&mut value, "theme").and_then(into_string)),
 				convert_emoticons: req!(try!(remove(&mut value, "convert_emoticons")).as_bool()),
-				friend_source_flags: try!(
-					remove(&mut value, "friend_source_flags").and_then(FriendSourceFlags::decode)
-				),
+				friend_source_flags: FriendSourceFlags::default(),
 				restricted_servers: try!(remove(&mut value, "restricted_guilds")
 					.and_then(|v| decode_array(v, ServerId::decode))),
 			}
@@ -2218,11 +2226,7 @@ impl Event {
 					convert_emoticons: remove(&mut value, "convert_emoticons")
 						.ok()
 						.and_then(|v| v.as_bool()),
-					friend_source_flags: try!(opt(
-						&mut value,
-						"friend_source_flags",
-						FriendSourceFlags::decode
-					)),
+					friend_source_flags: None,
 				}
 			)
 		} else if kind == "USER_GUILD_SETTINGS_UPDATE" {
