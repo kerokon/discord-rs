@@ -52,6 +52,7 @@ extern crate sodiumoxide;
 
 use std::collections::BTreeMap;
 use std::time;
+use serde_json::to_string;
 
 type Object = serde_json::Map<String, serde_json::Value>;
 
@@ -73,10 +74,12 @@ macro_rules! cdn_concat {
 mod serial;
 pub mod builders;
 pub mod model;
+mod interact;
 
 use builders::*;
 pub use connection::Connection;
 pub use error::{Error, Result};
+use interact::Interact;
 use model::*;
 use ratelimit::RateLimits;
 pub use state::{ChannelRef, State};
@@ -491,6 +494,8 @@ impl Discord {
 		from_reader(response)
 	}
 
+	
+
 	/// Edit a previously posted message.
 	///
 	/// Requires that either the message was posted by this user, or this user
@@ -666,6 +671,50 @@ impl Discord {
 		let mut request = request.start()?;
 		request.write(&http_buffer.buf[..])?;
 		Message::decode(serde_json::from_reader(check_status(request.send())?)?)
+	}
+
+	pub fn interact<R: ::std::io::Read>(
+		&self,
+		interact:Interact
+	) -> Result<()> {
+		use std::io::Write;
+
+		let url = match hyper::Url::parse("https://discord.com/api/v9/interactions") {
+			Ok(url) => url,
+			Err(_) => return Err(Error::Other("Invalid URL in interact")),
+		};
+		// NB: We're NOT using the Hyper itegration of multipart in order not to wrestle with the openssl-sys dependency hell.
+		let cr = multipart::mock::ClientRequest::default();
+		let mut multi = multipart::client::Multipart::from_request(cr)?;
+		multi.write_text("content", to_string(&interact)?)?;
+		let http_buffer: multipart::mock::HttpBuffer = multi.send()?;
+		fn multipart_mime(bound: &str) -> hyper::mime::Mime {
+			use hyper::mime::{Attr, Mime, SubLevel, TopLevel, Value};
+			Mime(
+				TopLevel::Multipart,
+				SubLevel::Ext("form-data".into()),
+				vec![(Attr::Ext("boundary".into()), Value::Ext(bound.into()))],
+			)
+		}
+
+		let tls = hyper_native_tls::NativeTlsClient::new().expect("Error initializing NativeTlsClient");
+		let connector = hyper::net::HttpsConnector::new(tls);
+		let mut request = hyper::client::Request::with_connector(hyper::method::Method::Post, url, &connector)?;
+		request
+			.headers_mut()
+			.set(hyper::header::Authorization(self.token.clone()));
+		request
+			.headers_mut()
+			.set(hyper::header::UserAgent(USER_AGENT.to_owned()));
+		request
+			.headers_mut()
+			.set(hyper::header::ContentType(multipart_mime(
+				&http_buffer.boundary,
+			)));
+		let mut request = request.start()?;
+		request.write(&http_buffer.buf[..])?;
+		check_status(request.send())?;
+		Ok(())
 	}
 
 	/// Acknowledge this message as "read" by this client.
