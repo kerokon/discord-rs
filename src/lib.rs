@@ -686,7 +686,7 @@ impl Discord {
 		// NB: We're NOT using the Hyper itegration of multipart in order not to wrestle with the openssl-sys dependency hell.
 		let cr = multipart::mock::ClientRequest::default();
 		let mut multi = multipart::client::Multipart::from_request(cr)?;
-		multi.write_text("content", to_string(&interact)?)?;
+		multi.write_text("payload_json", to_string(&interact)?)?;
 		let http_buffer: multipart::mock::HttpBuffer = multi.send()?;
 		fn multipart_mime(bound: &str) -> hyper::mime::Mime {
 			use hyper::mime::{Attr, Mime, SubLevel, TopLevel, Value};
