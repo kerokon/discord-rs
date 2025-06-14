@@ -74,7 +74,7 @@ macro_rules! cdn_concat {
 mod serial;
 pub mod builders;
 pub mod model;
-mod interact;
+pub mod interact;
 
 use builders::*;
 pub use connection::Connection;
@@ -494,7 +494,7 @@ impl Discord {
 		from_reader(response)
 	}
 
-	
+
 
 	/// Edit a previously posted message.
 	///
