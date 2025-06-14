@@ -673,7 +673,7 @@ impl Discord {
 		Message::decode(serde_json::from_reader(check_status(request.send())?)?)
 	}
 
-	pub fn interact<R: ::std::io::Read>(
+	pub fn interact(
 		&self,
 		interact:Interact
 	) -> Result<()> {
